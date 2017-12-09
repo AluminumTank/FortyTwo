@@ -11,6 +11,8 @@ package termproject;
 public class TwoFourTree
         implements Dictionary {
 
+    private static final int MAX_ITEMS = 3;
+
     private Comparator treeComp;
     private int size = 0;
     private TFNode treeRoot = null;
@@ -27,6 +29,112 @@ public class TwoFourTree
         treeRoot = root;
     }
 
+	private TFNode search(Object key) {
+		TFNode current = treeRoot;
+		TFNode parent = null;
+		if(treeRoot == null) {
+			throw new TwoFourTreeException("root was null");
+		}
+
+		// loop until we have reached the child of an external node, or until
+		// we find the key
+		while(current != null) {
+			int index = FFGTE(current, key);
+			if(treeComp.isEqual(current.getItem(index).key(), key)) {
+				break;
+			}
+
+			parent = current;
+			current = current.getChild(index);
+		}
+
+		// if key was not found, we know we are at an external node, so we must
+		// return that node rather than its null "child"
+		if(current == null) {
+			return parent;
+		}else {
+			return current;
+		}
+	}
+
+	private int FFGTE(TFNode node, Object key) {
+		int i;
+		for(i = 0; i < node.getNumItems(); ++i) {
+			if(treeComp.isGreaterThanOrEqualTo(node.getItem(i).key(), key)) {
+				break;
+			}
+		}
+		return i;
+	}
+
+	private int WCIT(TFNode node) {
+		TFNode parent = node.getParent();
+		int i;
+		for(i = 0; i < parent.getNumItems() + 1; ++i) {
+			if(parent.getChild(i) == node) {
+				break;
+			}
+		}
+		return i;
+	}
+
+	private TFNode getInOrderSuccessor(TFNode current, Object key) {
+		if(current == null) {
+			return null;
+		}
+
+		int index = FFGTE(current, key);
+		TFNode next = getInOrderSuccessor(current.getChild(index), key);
+		if(next == null) {
+			return current;
+		}else {
+			return next;
+		}
+	}
+
+	private void fixOverflow(TFNode node) {
+		if(node.getNumItems() <= MAX_ITEMS) {
+			return;
+		}
+
+		TFNode left = node.getChild(3);
+		TFNode right = node.getChild(4);
+		TFNode parent = node.getParent();
+
+		// special case when root overflows (we must increase height of tree)
+		if(parent == null) {
+			parent = new TFNode();
+			parent.setChild(0, node);
+			node.setParent(parent);
+			treeRoot = parent;
+		}
+
+		// removes offending data from current node
+		int index = WCIT(node);
+		Item toSibling = node.deleteItem(3);
+		Item toParent = node.deleteItem(2);
+		node.setChild(3, null);
+		node.setChild(4, null);
+
+		// creates and populates new sibling node
+		TFNode sibling = new TFNode();
+		sibling.addItem(0, toSibling);
+		sibling.setParent(parent);
+		sibling.setChild(0, left);
+		sibling.setChild(1, right);
+		if(left != null) {
+			left.setParent(sibling);
+			right.setParent(sibling);
+		}
+
+		// inserts data into parent node and hooks up sibling
+		parent.insertItem(index, toParent);
+		parent.setChild(index + 1, sibling);
+		
+		// recursively call on parent
+		fixOverflow(parent);
+	}
+
     public int size() {
         return size;
     }
@@ -41,7 +149,18 @@ public class TwoFourTree
      * @return object corresponding to key; null if not found
      */
     public Object findElement(Object key) {
-        return null;
+		// first get the node which might contain the given key
+		TFNode target = search(key);
+
+		// find the key in this node
+		for(int i = 0; i < target.getNumItems(); ++i) {
+			if(treeComp.isEqual(target.getItem(i).key(), key)) {
+				return target.getItem(i).element();
+			}
+		}
+		
+		// if key was not in node, return null
+		return null;
     }
 
     /**
@@ -50,6 +169,16 @@ public class TwoFourTree
      * @param element to be inserted
      */
     public void insertElement(Object key, Object element) {
+		if(treeRoot == null) {
+			treeRoot = new TFNode();
+		}
+			
+		TFNode node = getInOrderSuccessor(treeRoot, key);
+		int index = FFGTE(node, key);
+		node.insertItem(index, new Item(key, element));
+		if(node.getNumItems() > MAX_ITEMS) {
+			fixOverflow(node);
+		}
     }
 
     /**
@@ -60,79 +189,86 @@ public class TwoFourTree
      * @exception ElementNotFoundException if the key is not in dictionary
      */
     public Object removeElement(Object key) throws ElementNotFoundException {
-        return null;
+		TFNode node = search(key);
+		int index = FFGTE(node, key);
+
+		if(node.getItem(index).key() != key) {
+			throw new ElementNotFoundException("element is not in tree");
+		}
+
     }
 
     public static void main(String[] args) {
         Comparator myComp = new IntegerComparator();
         TwoFourTree myTree = new TwoFourTree(myComp);
 
-        Integer myInt1 = new Integer(47);
-        myTree.insertElement(myInt1, myInt1);
-        Integer myInt2 = new Integer(83);
-        myTree.insertElement(myInt2, myInt2);
-        Integer myInt3 = new Integer(22);
-        myTree.insertElement(myInt3, myInt3);
+        myTree.insertElement(47, 47);
+		myTree.printAllElements();
 
-        Integer myInt4 = new Integer(16);
-        myTree.insertElement(myInt4, myInt4);
+        myTree.insertElement(83, 83);
+		myTree.printAllElements();
 
-        Integer myInt5 = new Integer(49);
-        myTree.insertElement(myInt5, myInt5);
+        myTree.insertElement(22, 22);
+		myTree.printAllElements();
 
-        Integer myInt6 = new Integer(100);
-        myTree.insertElement(myInt6, myInt6);
+        myTree.insertElement(16, 16);
+		myTree.printAllElements();
 
-        Integer myInt7 = new Integer(38);
-        myTree.insertElement(myInt7, myInt7);
+        myTree.insertElement(49, 49);
+		myTree.printAllElements();
 
-        Integer myInt8 = new Integer(3);
-        myTree.insertElement(myInt8, myInt8);
+        myTree.insertElement(100, 100);
+		myTree.printAllElements();
 
-        Integer myInt9 = new Integer(53);
-        myTree.insertElement(myInt9, myInt9);
+        myTree.insertElement(38, 38);
+		myTree.printAllElements();
 
-        Integer myInt10 = new Integer(66);
-        myTree.insertElement(myInt10, myInt10);
+        myTree.insertElement(3, 3);
+		myTree.printAllElements();
 
-        Integer myInt11 = new Integer(19);
-        myTree.insertElement(myInt11, myInt11);
+        myTree.insertElement(53, 53);
+		myTree.printAllElements();
 
-        Integer myInt12 = new Integer(23);
-        myTree.insertElement(myInt12, myInt12);
+        myTree.insertElement(66, 66);
+		myTree.printAllElements();
 
-        Integer myInt13 = new Integer(24);
-        myTree.insertElement(myInt13, myInt13);
+        myTree.insertElement(19, 19);
+		myTree.printAllElements();
 
-        Integer myInt14 = new Integer(88);
-        myTree.insertElement(myInt14, myInt14);
+        myTree.insertElement(23, 23);
+		myTree.printAllElements();
 
-        Integer myInt15 = new Integer(1);
-        myTree.insertElement(myInt15, myInt15);
+        myTree.insertElement(24, 24);
+		myTree.printAllElements();
 
-        Integer myInt16 = new Integer(97);
-        myTree.insertElement(myInt16, myInt16);
+        myTree.insertElement(88, 88);
+		myTree.printAllElements();
 
-        Integer myInt17 = new Integer(94);
-        myTree.insertElement(myInt17, myInt17);
+        myTree.insertElement(1, 1);
+		myTree.printAllElements();
 
-        Integer myInt18 = new Integer(35);
-        myTree.insertElement(myInt18, myInt18);
+        myTree.insertElement(97, 97);
+		myTree.printAllElements();
 
-        Integer myInt19 = new Integer(51);
-        myTree.insertElement(myInt19, myInt19);
+        myTree.insertElement(94, 94);
+		myTree.printAllElements();
 
-        myTree.printAllElements();
+        myTree.insertElement(35, 35);
+		myTree.printAllElements();
+
+        myTree.insertElement(51, 51);
+		myTree.printAllElements();
+
         System.out.println("done");
 
-        myTree = new TwoFourTree(myComp);
+        /*myTree = new TwoFourTree(myComp);
         final int TEST_SIZE = 10000;
 
 
         for (int i = 0; i < TEST_SIZE; i++) {
             myTree.insertElement(new Integer(i), new Integer(i));
-            //          myTree.printAllElements();
-            //         myTree.checkTree();
+                     myTree.printAllElements();
+                     myTree.checkTree();
         }
         System.out.println("removing");
         for (int i = 0; i < TEST_SIZE; i++) {
@@ -144,6 +280,7 @@ public class TwoFourTree
                 myTree.printAllElements();
             }
         }
+*/
         System.out.println("done");
     }
 
@@ -155,6 +292,7 @@ public class TwoFourTree
         else {
             printTree(root(), indent);
         }
+		System.out.println("");
     }
 
     public void printTree(TFNode start, int indent) {
