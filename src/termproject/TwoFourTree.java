@@ -2,10 +2,9 @@ package termproject;
 
 /**
  * Title:        Term Project 2-4 Trees
- * Description:
+ * Description: An abstract data type for a 2-4 tree
  * Copyright:    Copyright (c) 2001
- * Company:
- * @author
+ * @author Joel Beckmeyer & Daniel Parker
  * @version 1.0
  */
 public class TwoFourTree
